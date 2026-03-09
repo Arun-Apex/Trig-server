@@ -1,0 +1,36 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: trig-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: trig-api
+    restart: unless-stopped
+    environment:
+      - PORT=8082
+      - MONGO_URL=mongodb://mongodb:27017/trigdb
+      - AUTH_TOKEN=32198767ddb0b65323f073690b174d50cead84557624616119698262b8e6f876
+    ports:
+      - "8082:8082"
+    depends_on:
+      - mongodb
+
+  mongo-express:
+    image: mongo-express:1
+    container_name: trig-mongo-express
+    restart: unless-stopped
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+    ports:
+      - "8083:8081"
+    depends_on:
+      - mongodb
+
+volumes:
+  mongo_data:
