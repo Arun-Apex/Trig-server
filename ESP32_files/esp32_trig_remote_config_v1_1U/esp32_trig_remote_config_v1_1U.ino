@@ -1548,69 +1548,69 @@ void loop() {
                    " reason=" + r.reason);
 
     bool alertActive =
-      r.decisionActive &&
-      matchesDeviceIso(r) &&
-      (cfg.allowStaleTrigger || (r.upstreamOk && !r.stale));
+    r.decisionActive &&
+    matchesDeviceIso(r) &&
+    (cfg.allowStaleTrigger || (r.upstreamOk && !r.stale));
 
-    String dedupeKey = chooseDedupeKey(r);
+String dedupeKey = chooseDedupeKey(r);
 
-    // If alert is active
-    if (alertActive) {
-      String eventKey = r.playlistKey;
-      if (eventKey.length() == 0) eventKey = "UNKNOWN";
+String eventKey = r.playlistKey;
+if (eventKey.length() == 0)
+    eventKey = "UNKNOWN";
 
-      String pl = playlistForKey(eventKey);
-      if (pl.length() == 0) pl = r.playlist;
+String playlist = playlistForKey(eventKey);
+if (playlist.length() == 0)
+    playlist = r.playlist;
 
-      int idx = eventIndexByKey(eventKey);
-      uint8_t minR = (idx >= 0) ? cfg.evMinRank[idx] : 0;
 
-      if (r.rank < minR) {
-        Serial.println("CAP: severity " + r.severity + " below min " + sevLabel(minR) + " for key=" + eventKey);
+// ================= EVENT ACTIVE =================
+if (alertActive)
+{
+    if (!inEventMode ||
+        dedupeKey != activeEventDedupeKey ||
+        playlist != activeEventPlaylist)
+    {
+        Serial.println("AUTO: trigger event playlist -> " + playlist);
 
-        if (inEventMode) {
-          Serial.println("AUTO: alert below threshold -> restore normal");
-          if (triggerPlaylist(cfg.normalPlaylist)) {
-            inEventMode = false;
-            activeEventDedupeKey = "";
-            activeEventPlaylist = "";
-          }
+        if (triggerPlaylist(playlist))
+        {
+            inEventMode = true;
+            activeEventPlaylist = playlist;
+            activeEventDedupeKey = dedupeKey;
+
+            cfg.lastDedupeKey = dedupeKey;
+            saveConfig();
+
+            Serial.println("AUTO: event mode active");
         }
-        return;
-      }
-
-      if (pl.length() == 0) {
-        Serial.println("CAP: no playlist configured for key=" + eventKey);
-        return;
-      }
-
-      // New event or changed event
-      if (!inEventMode || dedupeKey != activeEventDedupeKey || pl != activeEventPlaylist) {
-        Serial.println("AUTO: trigger event playlist -> " + pl);
-
-        if (triggerPlaylist(pl)) {
-          inEventMode = true;
-          activeEventDedupeKey = dedupeKey;
-          activeEventPlaylist = pl;
-
-          cfg.lastDedupeKey = dedupeKey;
-          saveConfig();
-
-          pendingIdentifier = r.identifier;
-          selectedEventName = eventKey;
-          selectedEventPlaylist = pl;
-          lastAlertIdSent = dedupeKey;
-          lastEventSent = eventKey;
-          lastSevSent = r.severity;
-
-          Serial.println("AUTO: event mode active");
-        } else {
-          Serial.println("AUTO: event trigger failed");
+        else
+        {
+            Serial.println("AUTO: event trigger failed");
         }
-      }
-
-      return;
     }
+
+    return;
+}
+
+
+// ================= EVENT CLEARED =================
+if (!alertActive && inEventMode)
+{
+    Serial.println("AUTO: alert inactive -> restore normal playlist");
+
+    if (triggerPlaylist(cfg.normalPlaylist))
+    {
+        inEventMode = false;
+        activeEventPlaylist = "";
+        activeEventDedupeKey = "";
+
+        Serial.println("AUTO: returned to normal playlist");
+    }
+    else
+    {
+        Serial.println("AUTO: normal trigger failed");
+    }
+}
 
     // If alert is not active but device is still in event mode -> restore normal
     if (inEventMode) {
@@ -1633,3 +1633,5 @@ void loop() {
       }
     }
   }
+  
+}  
